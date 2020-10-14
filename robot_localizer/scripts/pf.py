@@ -164,6 +164,15 @@ class ParticleFilter:
             return
 
         # TODO: modify particles using delta
+        print(self.current_odom_xy_theta)
+        print("delta: ", delta)
+        for particle in self.particle_cloud:
+        	print("particle before: ", particle)
+        	particle.x = particle.x + delta[0]
+        	particle.y = particle.y + delta[1]
+        	particle.theta = particle.theta + delta[2]
+        	print("particle type: ", type(particle))
+        	print("delta type", type(delta))
 
     def map_calc_range(self,x,y,theta):
         """ Difficulty Level 3: implement a ray tracing likelihood model... Let me know if you are interested """
@@ -224,10 +233,11 @@ class ParticleFilter:
             xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(self.odom_pose.pose)
         self.particle_cloud = []
         # TODO create particles
+        # print("xy theta: ", xy_theta)
 
         # TODO: Create better distribution (currently just randomly generated)
         for i in range(self.n_particles):
-            new_pose = np.array(xy_theta) + np.random.randn(3)
+            new_pose = np.array(xy_theta) + (np.random.randn(3))
             new_particle = Particle(*new_pose)
             self.particle_cloud.append(new_particle)
 
