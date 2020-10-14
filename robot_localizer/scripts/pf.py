@@ -164,15 +164,10 @@ class ParticleFilter:
             return
 
         # TODO: modify particles using delta
-        print(self.current_odom_xy_theta)
-        print("delta: ", delta)
         for particle in self.particle_cloud:
-        	print("particle before: ", particle)
         	particle.x = particle.x + delta[0]
         	particle.y = particle.y + delta[1]
         	particle.theta = particle.theta + delta[2]
-        	print("particle type: ", type(particle))
-        	print("delta type", type(delta))
 
     def map_calc_range(self,x,y,theta):
         """ Difficulty Level 3: implement a ray tracing likelihood model... Let me know if you are interested """
@@ -185,9 +180,14 @@ class ParticleFilter:
             particle is selected in the resampling step.  You may want to make use of the given helper
             function draw_random_sample.
         """
-        # make sure the distribution is normalized
+        weights = []
+        for p in self.particle_cloud: #make a list of particle weights for draw_random_sample to use
+        	weights.append(p.w)
+        print(weights)
+
+        self.particle_cloud = self.draw_random_sample(self.particle_cloud,weights,self.n_particles)
+
         self.normalize_particles()
-        # TODO: fill out the rest of the implementation
 
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
@@ -232,8 +232,6 @@ class ParticleFilter:
         if xy_theta is None:
             xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(self.odom_pose.pose)
         self.particle_cloud = []
-        # TODO create particles
-        # print("xy theta: ", xy_theta)
 
         # TODO: Create better distribution (currently just randomly generated)
         for i in range(self.n_particles):
@@ -242,7 +240,6 @@ class ParticleFilter:
             self.particle_cloud.append(new_particle)
 
         self.normalize_particles()
-        self.update_robot_pose(timestamp)
 
     def normalize_particles(self):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
