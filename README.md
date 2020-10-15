@@ -1,6 +1,15 @@
 # robot_localization
 This is the base repo for the Olin Computational Robotics Robot Localization project
 
+Features:
++ Resample noise is based on particle variance
++ Custom particle messages
++ Dynamic color visualization
++ maximum certainty
+
+Potential improvements:
++ Lidar to base_link tf
+
 
 ```
 roscore

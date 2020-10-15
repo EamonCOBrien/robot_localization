@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 """ This is the starter code for the robot localization project """
 
@@ -84,7 +84,12 @@ class ParticleFilter:
         self.odom_frame = "odom"        # the name of the odometry coordinate frame
         self.scan_topic = "scan"        # the topic where we will get laser scans from
 
-        self.n_particles = 300          # the number of particles to use
+        self.n_particles = 300                # the number of particles to use
+        self.initial_uncertainty_xy = 1       # Amplitute factor of initial x and y uncertainty
+        self.initial_uncertainty_theta = 0.5  # Amplitude factor of initial theta uncertainty
+        self.variance_scale = 0.15             # Scaling term for variance effect on resampling
+        # self.resample_noise_xy = 0.1          # Amplitude factor of resample x and y noise
+        # self.resample_noise_theta = 0.1       # Amplitude factor of resample theta noise
 
         self.d_thresh = 0.2             # the amount of linear movement before performing an update
         self.a_thresh = math.pi/6       # the amount of angular movement before performing an update
@@ -133,8 +138,18 @@ class ParticleFilter:
         # first make sure that the particle weights are normalized
         self.normalize_particles()
 
-        # TODO: assign the latest pose into self.robot_pose as a geometry_msgs.Pose object
-        # just to get started we will fix the robot's pose to always be at the origin
+        # sum_x, sum_y, sum_theta = 0,0,0
+        # for p in self.particle_cloud:
+        #     sum_x += p.x
+        #     sum_y += p.y
+        #     sum_theta += p.theta
+        #
+        # # TODO: assign the latest pose into self.robot_pose as a geometry_msgs.Pose object
+        # # just to get started we will fix the robot's pose to always be at the origin
+        # self.robot_pose = self.transform_helper.convert_xy_and_theta_to_pose(sum_x/self.n_particles,
+        #                                                sum_y/self.n_particles,
+        #                                                sum_theta/self.n_particles)
+
         self.robot_pose = Pose()
 
         self.transform_helper.fix_map_to_odom_transform(self.robot_pose, timestamp)
@@ -180,18 +195,30 @@ class ParticleFilter:
             particle is selected in the resampling step.  You may want to make use of the given helper
             function draw_random_sample.
         """
-        weights = []
-        for p in self.particle_cloud: #make a list of particle weights for draw_random_sample to use
-        	weights.append(p.w)
+        xs, ys, thetas, weights = [],[],[],[]
 
-        self.particle_cloud = self.draw_random_sample(self.particle_cloud,weights,self.n_particles)
+        # Make a list of particle stats for draw_random_sample to use
+        for p in self.particle_cloud:
+            xs.append(p.x)
+            ys.append(p.y)
+            thetas.append(p.theta)
+            weights.append(p.w)
 
-        for p in self.particle_cloud: #here we inject some noise into the new cloud
-            #p = Particle(*(np.array(p.x, p.y, p.theta) + (np.random.randn(3))/5))
+        # Throw out some particles
+        self.particle_cloud = self.draw_random_sample(self.particle_cloud,
+            weights, self.n_particles)
+
+        # Compute variance of particles
+        x_var = np.var(xs)
+        y_var = np.var(ys)
+        theta_var = np.var(weights)
+
+        # Inject some noise into the new cloud based on current variance
+        for p in self.particle_cloud:
             noise = np.random.randn(3)
-            p.x += noise[0]/10
-            p.y += noise[1]/10
-            p.theta += noise[2]/100
+            p.x += noise[0] * x_var * self.variance_scale
+            p.y += noise[1] * y_var * self.variance_scale
+            p.theta += noise[2] * theta_var * self.variance_scale
 
         self.normalize_particles()
 
@@ -233,9 +260,9 @@ class ParticleFilter:
             if valid_pts < 10:
                 p.w = 0
             else:
-                # Update particle weight based on inverse of average difference
+                # Update particle weight based on inverse of average squared difference
                 if d != 0:
-                    p.w = 1 / (d/valid_pts)
+                    p.w = 1 / ((d ** 2)/valid_pts)
                 else:
                     # If difference is exactly 0, something's likely wrong
                     rospy.logwarn("Computed difference between particle projection and lidar scan is exactly 0")
@@ -273,10 +300,9 @@ class ParticleFilter:
             xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(self.odom_pose.pose)
         self.particle_cloud = []
 
-        # TODO: Create better distribution (currently just randomly generated)
         for i in range(self.n_particles):
-            noise = (np.random.randn(3))
-            noise[2] = 0
+            noise = (np.random.randn(3)*self.initial_uncertainty_xy)
+            noise[2] = np.random.randn()*self.initial_uncertainty_theta
             new_pose = np.array(xy_theta) + noise
             new_particle = Particle(*new_pose)
             self.particle_cloud.append(new_particle)

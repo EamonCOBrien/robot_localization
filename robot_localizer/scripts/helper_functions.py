@@ -56,6 +56,17 @@ class TFHelper(object):
         angles = t.euler_from_quaternion(orientation_tuple)
         return (pose.position.x, pose.position.y, angles[2])
 
+    def convert_xy_and_theta_to_pose(self, x, y, yaw):
+        """ Convert x, y, yaw to pose (geometry_msgs.Pose) """
+        orientation_tuple = (0,0,yaw)
+        angles = t.quaternion_from_euler(orientation_tuple)
+        output_msg = Pose()
+        output_msg.position.x = x
+        output_msg.position.y = y
+        output_msg.orientation.z = angles[2]
+        output_msg.orientation.w = angles[3]
+        return output_msg
+
     def angle_normalize(self, z):
         """ convenience function to map an angle to the range [-pi,pi] """
         return math.atan2(math.sin(z), math.cos(z))
