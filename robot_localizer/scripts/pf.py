@@ -156,7 +156,7 @@ class ParticleFilter:
             old_odom_xy_theta = self.current_odom_xy_theta
             delta = (new_odom_xy_theta[0] - self.current_odom_xy_theta[0],
                      new_odom_xy_theta[1] - self.current_odom_xy_theta[1],
-                     new_odom_xy_theta[2] + self.current_odom_xy_theta[2])# COUNTERCLOCKWISE
+                     new_odom_xy_theta[2] - self.current_odom_xy_theta[2])# COUNTERCLOCKWISE
 
             self.current_odom_xy_theta = new_odom_xy_theta
         else:
@@ -167,7 +167,7 @@ class ParticleFilter:
         for particle in self.particle_cloud:
         	particle.x = particle.x - delta[0]
         	particle.y = particle.y - delta[1]
-        	particle.theta = particle.theta - delta[2]
+        	particle.theta = particle.theta + delta[2]
 
     def map_calc_range(self,x,y,theta):
         """ Difficulty Level 3: implement a ray tracing likelihood model... Let me know if you are interested """
@@ -186,14 +186,13 @@ class ParticleFilter:
 
         self.particle_cloud = self.draw_random_sample(self.particle_cloud,weights,self.n_particles)
 
-        for p in self.particle_cloud:
+        for p in self.particle_cloud: #here we inject some noise into the new cloud
             #p = Particle(*(np.array(p.x, p.y, p.theta) + (np.random.randn(3))/5))
             noise = np.random.randn(3)
             p.x += noise[0]/10
             p.y += noise[1]/10
-            p.theta += noise[2]
+            p.theta += noise[2]/100
 
-        print(len(self.particle_cloud))
         self.normalize_particles()
 
     def update_particles_with_laser(self, msg):
@@ -276,7 +275,9 @@ class ParticleFilter:
 
         # TODO: Create better distribution (currently just randomly generated)
         for i in range(self.n_particles):
-            new_pose = np.array(xy_theta) + (np.random.randn(3))
+            noise = (np.random.randn(3))
+            noise[2] = 0
+            new_pose = np.array(xy_theta) + noise
             new_particle = Particle(*new_pose)
             self.particle_cloud.append(new_particle)
 
