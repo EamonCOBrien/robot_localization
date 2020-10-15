@@ -156,7 +156,7 @@ class ParticleFilter:
             old_odom_xy_theta = self.current_odom_xy_theta
             delta = (new_odom_xy_theta[0] - self.current_odom_xy_theta[0],
                      new_odom_xy_theta[1] - self.current_odom_xy_theta[1],
-                     new_odom_xy_theta[2] - self.current_odom_xy_theta[2])
+                     new_odom_xy_theta[2] + self.current_odom_xy_theta[2])# COUNTERCLOCKWISE
 
             self.current_odom_xy_theta = new_odom_xy_theta
         else:
@@ -186,6 +186,14 @@ class ParticleFilter:
 
         self.particle_cloud = self.draw_random_sample(self.particle_cloud,weights,self.n_particles)
 
+        for p in self.particle_cloud:
+            #p = Particle(*(np.array(p.x, p.y, p.theta) + (np.random.randn(3))/5))
+            noise = np.random.randn(3)
+            p.x += noise[0]/10
+            p.y += noise[1]/10
+            p.theta += noise[2]
+
+        print(len(self.particle_cloud))
         self.normalize_particles()
 
     def update_particles_with_laser(self, msg):
