@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import rospy
 
 from robot_localizer.msg import ParticleArray
@@ -16,7 +16,7 @@ class ParticleVisualizer(object):
 
         # Used to scale colors
         # TODO: Make this max weight dynamic
-        self.max_weight = rospy.get_param("~max_weight", 0.0075)
+        # self.max_weight = rospy.get_param("~max_weight", 0.0075)
 
         self.particlearray_sub = rospy.Subscriber("weighted_particlecloud",
             ParticleArray, self.particlearrayCB)
@@ -34,6 +34,12 @@ class ParticleVisualizer(object):
         assign marker color based on weight """
         marker_array = MarkerArray()
 
+        # Compute max weight to dynamically choose color range
+        max_weight = 0
+        for particle in self.particlearray_msg.particles:
+            if particle.weight > max_weight:
+                max_weight = particle.weight
+
         for idx, particle in enumerate(self.particlearray_msg.particles):
             # Initialize new marker
             new_marker = Marker()
@@ -50,8 +56,9 @@ class ParticleVisualizer(object):
             # Fill in marker position & orientation info
             new_marker.pose = particle.pose
             # Color marker based on weight (green = high weight, red = low)
-            new_marker.color.r = 1 - particle.weight/self.max_weight
-            new_marker.color.g = particle.weight/self.max_weight
+            # **2 makes color scale quadratic instead of linear
+            new_marker.color.r = 1 - particle.weight**2/max_weight**2
+            new_marker.color.g = particle.weight**2/max_weight**2
             new_marker.color.b = 0
             new_marker.color.a = 1.0
 
