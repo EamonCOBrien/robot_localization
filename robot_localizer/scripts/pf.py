@@ -164,6 +164,10 @@ class ParticleFilter:
             return
 
         # TODO: modify particles using delta
+        for particle in self.particle_cloud:
+        	particle.x = particle.x + delta[0]
+        	particle.y = particle.y + delta[1]
+        	particle.theta = particle.theta + delta[2]
 
     def map_calc_range(self,x,y,theta):
         """ Difficulty Level 3: implement a ray tracing likelihood model... Let me know if you are interested """
@@ -176,20 +180,59 @@ class ParticleFilter:
             particle is selected in the resampling step.  You may want to make use of the given helper
             function draw_random_sample.
         """
-        # make sure the distribution is normalized
-        initialize_particle_cloud(timestamp, xy_theta)
-        # TODO: fill out the rest of the implementation
+        weights = []
+        for p in self.particle_cloud: #make a list of particle weights for draw_random_sample to use
+        	weights.append(p.w)
+        print(weights)
+
+        self.particle_cloud = self.draw_random_sample(self.particle_cloud,weights,self.n_particles)
+
+        self.normalize_particles()
 
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
         for p in self.particle_cloud:
-            # Find nearest point to each particle according to map
-            nearest_pt = self.occupancy_field.get_closest_obstacle_distance(p.x, p.y)
-            # Update weight based on inverse of difference
-            if (nearest_pt - msg.range_min) == 0:
-                p.w = 50.0
+            # Compute delta to x,y coords in map frame of each lidar point assuming
+            # lidar is centered at the base_link
+            # TODO: Account for the offset between the lidar and the base_link
+            angles = np.arange(0, 361, dtype=float)
+            dxs = msg.ranges * np.cos(np.degrees(angles + p.theta))
+            dys = msg.ranges * np.sin(np.degrees(angles + p.theta))
+
+            # Initialize total distance to 0
+            d = 0
+            # Initialize number of valid points
+            valid_pts = len(dxs)
+
+            for dx,dy in zip(dxs, dys):
+                # Ignore points with invalid ranges
+                if dx == 0 and dy == 0:
+                    continue
+
+                # Apply delta
+                x = p.x + dx
+                y = p.y + dy
+
+                # Find nearest point to each lidar point according to map
+                dist = self.occupancy_field.get_closest_obstacle_distance(x, y)
+                # Check to make sure lidar point is actually on the map
+                if not np.isnan(dist):
+                    d += dist
+                else:
+                    valid_pts -= 1
+
+            # If there aren't enough valid points for the particle, assume that it's
+            # not good
+            # TODO: Add a ROS param threshold for this
+            if valid_pts < 10:
+                p.w = 0
             else:
-                p.w = 1 / (nearest_pt - msg.range_min)
+                # Update particle weight based on inverse of average difference
+                if d != 0:
+                    p.w = 1 / (d/valid_pts)
+                else:
+                    # If difference is exactly 0, something's likely wrong
+                    rospy.logwarn("Computed difference between particle projection and lidar scan is exactly 0")
 
         self.normalize_particles()
 
@@ -223,16 +266,14 @@ class ParticleFilter:
         if xy_theta is None:
             xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(self.odom_pose.pose)
         self.particle_cloud = []
-        # TODO create particles
 
         # TODO: Create better distribution (currently just randomly generated)
         for i in range(self.n_particles):
-            new_pose = np.array(xy_theta) + np.random.randn(3)
+            new_pose = np.array(xy_theta) + (np.random.randn(3))
             new_particle = Particle(*new_pose)
             self.particle_cloud.append(new_particle)
 
         self.normalize_particles()
-        self.update_robot_pose(timestamp)
 
     def normalize_particles(self):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
@@ -323,7 +364,6 @@ class ParticleFilter:
                 self.scan_in_base_link = self.tf_listener.transformPointCloud("base_link", last_projected_scan_timeshift)
 
             self.update_particles_with_laser(msg)   # update based on laser scan
-            # self.publish_particles(msg)
             self.update_robot_pose(msg.header.stamp)                # update robot's pose
             self.resample_particles()               # resample particles to focus on areas of high density
         # publish particles (so things like rviz can see them)
