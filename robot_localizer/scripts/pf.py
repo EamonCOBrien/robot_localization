@@ -165,16 +165,16 @@ class ParticleFilter:
 
         # TODO: modify particles using delta
         for particle in self.particle_cloud:
-        	particle.x = particle.x + delta[0]
-        	particle.y = particle.y + delta[1]
-        	particle.theta = particle.theta + delta[2]
+        	particle.x = particle.x - delta[0]
+        	particle.y = particle.y - delta[1]
+        	particle.theta = particle.theta - delta[2]
 
     def map_calc_range(self,x,y,theta):
         """ Difficulty Level 3: implement a ray tracing likelihood model... Let me know if you are interested """
         # TODO: nothing unless you want to try this alternate likelihood model
         pass
 
-    def resample_particles(self,x,y,theta):
+    def resample_particles(self):
         """ Resample the particles according to the new particle weights.
             The weights stored with each particle should define the probability that a particular
             particle is selected in the resampling step.  You may want to make use of the given helper
@@ -183,7 +183,6 @@ class ParticleFilter:
         weights = []
         for p in self.particle_cloud: #make a list of particle weights for draw_random_sample to use
         	weights.append(p.w)
-        print(weights)
 
         self.particle_cloud = self.draw_random_sample(self.particle_cloud,weights,self.n_particles)
 
