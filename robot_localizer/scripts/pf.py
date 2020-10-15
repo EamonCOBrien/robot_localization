@@ -138,19 +138,17 @@ class ParticleFilter:
         # first make sure that the particle weights are normalized
         self.normalize_particles()
 
-        # sum_x, sum_y, sum_theta = 0,0,0
-        # for p in self.particle_cloud:
-        #     sum_x += p.x
-        #     sum_y += p.y
-        #     sum_theta += p.theta
-        #
-        # # TODO: assign the latest pose into self.robot_pose as a geometry_msgs.Pose object
-        # # just to get started we will fix the robot's pose to always be at the origin
-        # self.robot_pose = self.transform_helper.convert_xy_and_theta_to_pose(sum_x/self.n_particles,
-        #                                                sum_y/self.n_particles,
-        #                                                sum_theta/self.n_particles)
+        sum_x, sum_y, sum_theta = 0,0,0
+        for p in self.particle_cloud:
+            sum_x += p.x
+            sum_y += p.y
+            sum_theta += p.theta
 
-        self.robot_pose = Pose()
+        # Assign the latest pose into self.robot_pose as a Pose object
+        self.robot_pose = self.transform_helper.convert_xy_and_theta_to_pose(
+                sum_x/self.n_particles,
+                sum_y/self.n_particles,
+                sum_theta/self.n_particles)
 
         self.transform_helper.fix_map_to_odom_transform(self.robot_pose, timestamp)
 

@@ -6,9 +6,10 @@ Features:
 + Custom particle messages
 + Dynamic color visualization
 + maximum certainty
++ modified helper_functions to include lookup_transform and convert_xy_and_theta_to_pose
 
 Potential improvements:
-+ Lidar to base_link tf
++ Use mode instead of mean 
 
 
 ```
