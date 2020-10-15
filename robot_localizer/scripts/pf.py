@@ -170,14 +170,14 @@ class ParticleFilter:
         # TODO: nothing unless you want to try this alternate likelihood model
         pass
 
-    def resample_particles(self):
+    def resample_particles(self,x,y,theta):
         """ Resample the particles according to the new particle weights.
             The weights stored with each particle should define the probability that a particular
             particle is selected in the resampling step.  You may want to make use of the given helper
             function draw_random_sample.
         """
         # make sure the distribution is normalized
-        self.normalize_particles()
+        initialize_particle_cloud(timestamp, xy_theta)
         # TODO: fill out the rest of the implementation
 
     def update_particles_with_laser(self, msg):
