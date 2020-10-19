@@ -46,12 +46,16 @@ class Particle(object):
         self.x = x
         self.y = y
 
+    def __eq__(self, other):
+        return self.w == other.w
+
+    def __lt__(self, other):
+        return self.w < other.w
+
     def as_pose(self):
         """ A helper function to convert a particle to a geometry_msgs/Pose message """
         orientation_tuple = tf.transformations.quaternion_from_euler(0,0,self.theta)
         return Pose(position=Point(x=self.x,y=self.y,z=0), orientation=Quaternion(x=orientation_tuple[0], y=orientation_tuple[1], z=orientation_tuple[2], w=orientation_tuple[3]))
-
-    # TODO: define additional helper functions if needed
 
 class ParticleFilter:
     """ The class that represents a Particle Filter ROS Node
@@ -88,6 +92,9 @@ class ParticleFilter:
         self.initial_uncertainty_xy = 1       # Amplitute factor of initial x and y uncertainty
         self.initial_uncertainty_theta = 0.5  # Amplitude factor of initial theta uncertainty
         self.variance_scale = 0.15             # Scaling term for variance effect on resampling
+        self.n_particles_average = 20          # Number of particles to average for pose update
+        self.linear_var_thresh = 0.05           # Maximum confidence along x/y (meters)
+        self.angular_var_thresh = 0.2          # Maximum confidence along theta (radians)
         # self.resample_noise_xy = 0.1          # Amplitude factor of resample x and y noise
         # self.resample_noise_theta = 0.1       # Amplitude factor of resample theta noise
 
@@ -134,30 +141,30 @@ class ParticleFilter:
             There are two logical methods for this:
                 (1): compute the mean pose
                 (2): compute the most likely pose (i.e. the mode of the distribution)
+
+            Our implementation averages a couple of the best particles to update the
+            pose
         """
         # first make sure that the particle weights are normalized
         self.normalize_particles()
 
-        # sum_x, sum_y, sum_theta = 0,0,0
+        sum_x, sum_y, sum_theta = 0, 0, 0
 
-        # TODO: get 20 best particles
-
-        max_weight = 0
-        best_particle = None
-        for p in self.particle_cloud:
-            if p.w > max_weight:
-                max_weight = p.w
-                best_particle = p
-
-            # sum_x += p.x
-            # sum_y += p.y
-            # sum_theta += p.theta
+        # sort our particles by weight
+        best_particles = sorted(self.particle_cloud)
+        # take the top particles with the highest weights
+        best_particles = best_particles[-self.n_particles_average:]
+        # find the average of this subset
+        for p in best_particles:
+            sum_x += p.x
+            sum_y += p.y
+            sum_theta += p.theta
 
         # Assign the latest pose into self.robot_pose as a Pose object
         self.robot_pose = self.transform_helper.convert_xy_and_theta_to_pose(
-                best_particle.x,
-                best_particle.y,
-                best_particle.theta)
+                sum_x/self.n_particles_average,
+                sum_y/self.n_particles_average,
+                sum_theta/self.n_particles_average)
 
         self.transform_helper.fix_map_to_odom_transform(self.robot_pose, timestamp)
 
@@ -222,17 +229,21 @@ class ParticleFilter:
         y_var = np.var(ys)
         theta_var = np.var(weights)
 
-        # Cap our level of confidence in the particles
-        if x_var < 0.1: x_var = 0.1
-        if y_var < 0.1: y_var = 0.1
-        if theta_var < 10: theta_var = 10
+         # Set a threshold for minimum linear and angular variance
+         # This prevents our filter from becoming "overconfident" in the estimate
+        if x_var < self.linear_var_thresh:
+        	x_var = self.linear_var_thresh
+        if y_var < self.linear_var_thresh:
+        	y_var = self.linear_var_thresh
+        if theta_var < self.angular_var_thresh:
+        	theta_var = self.angular_var_thresh
 
         # Inject some noise into the new cloud based on current variance
         for p in self.particle_cloud:
             noise = np.random.randn(3)
-            p.x #+= noise[0] * x_var * self.variance_scale
-            p.y #+= noise[1] * y_var * self.variance_scale
-            p.theta #+= noise[2] * theta_var * self.variance_scale
+            p.x += noise[0] * x_var * self.variance_scale
+            p.y += noise[1] * y_var * self.variance_scale
+            p.theta += noise[2] * theta_var * self.variance_scale
 
         self.normalize_particles()
 
