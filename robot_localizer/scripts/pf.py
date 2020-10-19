@@ -185,11 +185,13 @@ class ParticleFilter:
             self.current_odom_xy_theta = new_odom_xy_theta
             return
 
-        # TODO: modify particles using delta
+        # update particles
+        r = math.sqrt(delta[0]**2 + delta[1]**2)
+
         for particle in self.particle_cloud:
-        	particle.x = particle.x - delta[0]
-        	particle.y = particle.y - delta[1]
-        	particle.theta = particle.theta + delta[2]
+        	particle.x += r*math.cos(particle.theta)
+        	particle.y += r*math.sin(particle.theta)
+        	particle.theta += delta[2]
 
     def map_calc_range(self,x,y,theta):
         """ Difficulty Level 3: implement a ray tracing likelihood model... Let me know if you are interested """
@@ -220,15 +222,15 @@ class ParticleFilter:
         y_var = np.var(ys)
         theta_var = np.var(weights)
 
-        # # Cap our level of confidence in the particles
-        # if x_var < 0.1: x_var = 0.1
-        # if y_var < 0.1: y_var = 0.1
-        # if theta_var < 0.1: theta_var = 0.1
+        # Cap our level of confidence in the particles
+        if x_var < 0.1: x_var = 0.1
+        if y_var < 0.1: y_var = 0.1
+        if theta_var < 10: theta_var = 10
 
         # Inject some noise into the new cloud based on current variance
         for p in self.particle_cloud:
             noise = np.random.randn(3)
-            p.x # += noise[0] * x_var * self.variance_scale
+            p.x #+= noise[0] * x_var * self.variance_scale
             p.y #+= noise[1] * y_var * self.variance_scale
             p.theta #+= noise[2] * theta_var * self.variance_scale
 
