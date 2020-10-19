@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """ This is the starter code for the robot localization project """
 
@@ -46,12 +46,16 @@ class Particle(object):
         self.x = x
         self.y = y
 
+    def __eq__(self, other):
+        return self.w == other.w
+
+    def __lt__(self, other):
+        return self.w < other.w
+
     def as_pose(self):
         """ A helper function to convert a particle to a geometry_msgs/Pose message """
         orientation_tuple = tf.transformations.quaternion_from_euler(0,0,self.theta)
         return Pose(position=Point(x=self.x,y=self.y,z=0), orientation=Quaternion(x=orientation_tuple[0], y=orientation_tuple[1], z=orientation_tuple[2], w=orientation_tuple[3]))
-
-    # TODO: define additional helper functions if needed
 
 class ParticleFilter:
     """ The class that represents a Particle Filter ROS Node
@@ -143,21 +147,25 @@ class ParticleFilter:
         # TODO: get 20 best particles
 
         max_weight = 0
-        best_particle = None
-        for p in self.particle_cloud:
-            if p.w > max_weight:
-                max_weight = p.w
-                best_particle = p
-
-            # sum_x += p.x
-            # sum_y += p.y
-            # sum_theta += p.theta
+        avg_x = 0
+        avg_y = 0
+        avg_theta = 0
+        #self.particle_cloud = sorted(self.particle_cloud, key=operator.attrgetter("w"))
+        best_particles = sorted(self.particle_cloud) #sort our particles by weight
+        best_particles = best_particles[-9:] #take the ten particles with the highest weights
+        for p in best_particles:
+            avg_x += p.x
+            avg_y += p.y
+            avg_theta += p.theta
+        avg_x = avg_x/10
+        avg_y = avg_y/10
+        avg_theta = avg_theta/10 #average our best ten particles
 
         # Assign the latest pose into self.robot_pose as a Pose object
         self.robot_pose = self.transform_helper.convert_xy_and_theta_to_pose(
-                best_particle.x,
-                best_particle.y,
-                best_particle.theta)
+                avg_x,
+                avg_y,
+                avg_theta)
 
         self.transform_helper.fix_map_to_odom_transform(self.robot_pose, timestamp)
 
