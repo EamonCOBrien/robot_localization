@@ -138,17 +138,26 @@ class ParticleFilter:
         # first make sure that the particle weights are normalized
         self.normalize_particles()
 
-        sum_x, sum_y, sum_theta = 0,0,0
+        # sum_x, sum_y, sum_theta = 0,0,0
+
+        # TODO: get 20 best particles
+
+        max_weight = 0
+        best_particle = None
         for p in self.particle_cloud:
-            sum_x += p.x
-            sum_y += p.y
-            sum_theta += p.theta
+            if p.w > max_weight:
+                max_weight = p.w
+                best_particle = p
+
+            # sum_x += p.x
+            # sum_y += p.y
+            # sum_theta += p.theta
 
         # Assign the latest pose into self.robot_pose as a Pose object
         self.robot_pose = self.transform_helper.convert_xy_and_theta_to_pose(
-                sum_x/self.n_particles,
-                sum_y/self.n_particles,
-                sum_theta/self.n_particles)
+                best_particle.x,
+                best_particle.y,
+                best_particle.theta)
 
         self.transform_helper.fix_map_to_odom_transform(self.robot_pose, timestamp)
 
@@ -211,12 +220,17 @@ class ParticleFilter:
         y_var = np.var(ys)
         theta_var = np.var(weights)
 
+        # # Cap our level of confidence in the particles
+        # if x_var < 0.1: x_var = 0.1
+        # if y_var < 0.1: y_var = 0.1
+        # if theta_var < 0.1: theta_var = 0.1
+
         # Inject some noise into the new cloud based on current variance
         for p in self.particle_cloud:
             noise = np.random.randn(3)
-            p.x += noise[0] * x_var * self.variance_scale
-            p.y += noise[1] * y_var * self.variance_scale
-            p.theta += noise[2] * theta_var * self.variance_scale
+            p.x # += noise[0] * x_var * self.variance_scale
+            p.y #+= noise[1] * y_var * self.variance_scale
+            p.theta #+= noise[2] * theta_var * self.variance_scale
 
         self.normalize_particles()
 
