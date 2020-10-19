@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """ This is the starter code for the robot localization project """
 
@@ -220,10 +220,13 @@ class ParticleFilter:
         y_var = np.var(ys)
         theta_var = np.var(weights)
 
-        # # Cap our level of confidence in the particles
-        # if x_var < 0.1: x_var = 0.1
-        # if y_var < 0.1: y_var = 0.1
-        # if theta_var < 0.1: theta_var = 0.1
+         # Set a threshold for minimum linear and angular variance
+        if x_var < self.linear_var_thresh: 
+        	x_var = self.linear_var_thresh
+        if y_var < self.linear_var_thresh: 
+        	y_var = self.linear_var_thresh
+        if theta_var < self.angular_var_thresh: 
+        	theta_var = self.angular_var_thresh
 
         # Inject some noise into the new cloud based on current variance
         for p in self.particle_cloud:
