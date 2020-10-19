@@ -88,13 +88,13 @@ class ParticleFilter:
         self.odom_frame = "odom"        # the name of the odometry coordinate frame
         self.scan_topic = "scan"        # the topic where we will get laser scans from
 
-        self.n_particles = 300                # the number of particles to use
-        self.initial_uncertainty_xy = 1       # Amplitute factor of initial x and y uncertainty
-        self.initial_uncertainty_theta = 0.5  # Amplitude factor of initial theta uncertainty
+        self.n_particles = 1                # the number of particles to use
+        self.initial_uncertainty_xy = 0       # Amplitute factor of initial x and y uncertainty
+        self.initial_uncertainty_theta = 0  # Amplitude factor of initial theta uncertainty
         self.variance_scale = 0.15             # Scaling term for variance effect on resampling
-        self.n_particles_average = 20          # Number of particles to average for pose update
+        self.n_particles_average = 1          # Number of particles to average for pose update
         self.linear_var_thresh = 0.05           # Maximum confidence along x/y (meters)
-        self.angular_var_thresh = 0.2          # Maximum confidence along theta (radians)
+        self.angular_var_thresh = 0.9          # Maximum confidence along theta (radians)
         # self.resample_noise_xy = 0.1          # Amplitude factor of resample x and y noise
         # self.resample_noise_theta = 0.1       # Amplitude factor of resample theta noise
 
@@ -114,6 +114,8 @@ class ParticleFilter:
         self.particle_pub = rospy.Publisher("particlecloud", PoseArray, queue_size=10)
         # publish custom particle array messge type
         self.particle_viz_pub = rospy.Publisher("weighted_particlecloud", ParticleArray, queue_size=10)
+
+        self.projected_scan_pub = rospy.Publisher("projected_scan", PointCloud, queue_size=10)
 
         # laser_subscriber listens for data from the lidar
         rospy.Subscriber(self.scan_topic, LaserScan, self.scan_received)
@@ -241,21 +243,31 @@ class ParticleFilter:
         # Inject some noise into the new cloud based on current variance
         for p in self.particle_cloud:
             noise = np.random.randn(3)
-            p.x += noise[0] * x_var * self.variance_scale
-            p.y += noise[1] * y_var * self.variance_scale
-            p.theta += noise[2] * theta_var * self.variance_scale
+            p.x #+= noise[0] * x_var * self.variance_scale
+            p.y #+= noise[1] * y_var * self.variance_scale
+            p.theta #+= noise[2] * theta_var * self.variance_scale
 
         self.normalize_particles()
 
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
+        distances = []
+        weights = []
+        num_pts_list = []
+
         for p in self.particle_cloud:
+            lidar_dist = []
+            pcl_msg = PointCloud()
+            pcl_msg.header = msg.header
+            pcl_msg.header.frame_id = "map"
+
             # Compute delta to x,y coords in map frame of each lidar point assuming
             # lidar is centered at the base_link
             # TODO: Account for the offset between the lidar and the base_link
-            angles = np.arange(0, 361, dtype=float)
-            dxs = msg.ranges * np.cos(np.degrees(angles + p.theta))
-            dys = msg.ranges * np.sin(np.degrees(angles + p.theta))
+            angles = np.linspace(0, 2*math.pi, num=361)
+            dxs = np.array(msg.ranges) * np.cos(angles + p.theta)#np.degrees(angles + math.radians(p.theta)))
+            dys = np.array(msg.ranges) * np.sin(angles + p.theta)#np.degrees(angles + math.radians(p.theta)))
+            print(p.theta)
 
             # Initialize total distance to 0
             d = 0
@@ -264,35 +276,64 @@ class ParticleFilter:
 
             for dx,dy in zip(dxs, dys):
                 # Ignore points with invalid ranges
-                if dx == 0 and dy == 0:
-                    continue
+                #if dx == 0 and dy == 0:
+                #    continue
 
                 # Apply delta
                 x = p.x + dx
                 y = p.y + dy
 
+                # Visualize PointCloud
+                new_pt = Point()
+                new_pt.x = x
+                new_pt.y = y
+                pcl_msg.points.append(new_pt)
+                self.projected_scan_pub.publish(pcl_msg)
+
                 # Find nearest point to each lidar point according to map
                 dist = self.occupancy_field.get_closest_obstacle_distance(x, y)
+                lidar_dist.append(dist)
                 # Check to make sure lidar point is actually on the map
                 if not np.isnan(dist):
                     d += dist
                 else:
                     valid_pts -= 1
 
+            sort_distances = sorted(lidar_dist)
+            print(sort_distances[-10:])
+            print(sort_distances[:10])
+
+            distances.append(d)
+            num_pts_list.append(int(valid_pts))
+    # sort_distances = sorted(distances)
+            # print(sort_distances[-10:])
+            # print(sort_distances[:10])
+
             # If there aren't enough valid points for the particle, assume that it's
             # not good
             # TODO: Add a ROS param threshold for this
-            if valid_pts < 10:
+            if valid_pts < 355:
                 p.w = 0
+                weights.append(p.w)
             else:
                 # Update particle weight based on inverse of average squared difference
                 if d != 0:
-                    p.w = 1 / ((d ** 2)/valid_pts)
+                    p.w = 1/(d/valid_pts)
+                    # p.w = (2 - d/valid_pts)
+                    # if p.w < 0: p.w = 0
+                    weights.append(p.w)
                 else:
                     # If difference is exactly 0, something's likely wrong
                     rospy.logwarn("Computed difference between particle projection and lidar scan is exactly 0")
 
         self.normalize_particles()
+
+        # sort_distances = sorted(distances)
+        # print(sort_distances)
+        # # print(weights[:10])
+        avgs = np.array(distances)/np.array(num_pts_list)
+        print(np.array(zip(avgs, weights, num_pts_list)))
+        # print(avgs)
 
     @staticmethod
     def draw_random_sample(choices, probabilities, n):
