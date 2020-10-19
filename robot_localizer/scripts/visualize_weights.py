@@ -57,8 +57,8 @@ class ParticleVisualizer(object):
             new_marker.pose = particle.pose
             # Color marker based on weight (green = high weight, red = low)
             # **2 makes color scale quadratic instead of linear
-            new_marker.color.r = 1 - particle.weight**2/max_weight**2
-            new_marker.color.g = particle.weight**2/max_weight**2
+            new_marker.color.r = 1 - particle.weight/max_weight
+            new_marker.color.g = particle.weight/max_weight
             new_marker.color.b = 0
             new_marker.color.a = 1.0
 
