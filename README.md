@@ -23,7 +23,7 @@ Eventually, we did end up testing with all of the provided bagfiles, and those r
 #### Highlighted Features
 + The noise added during the resampling step is scaled based on the current particle cloud variance instead of being fixed
 + We implemented a custom visualization node that displays particle messages and weights in RVIZ (the coloring range also dynamically scales with the current range of the data)
-+ We also created a dynamic reconfigure window to help with parameter tuning and experimentation
++ We also created a dynamic reconfigure window to help with parameter tuning and experimentation (available on the `dynamic_reconfigure` branch`)
 ![dynamic reconfigure window](robot_localizer/img/rqt_gui.png)
 ## Details
 #### Project goal
