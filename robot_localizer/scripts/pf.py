@@ -264,9 +264,9 @@ class ParticleFilter:
             # Compute delta to x,y coords in map frame of each lidar point assuming
             # lidar is centered at the base_link
             # TODO: Account for the offset between the lidar and the base_link
-            angles = np.arange(0, 361, dtype=float)
-            dxs = np.array(msg.ranges) * np.cos(np.degrees(angles + math.radians(p.theta)))
-            dys = np.array(msg.ranges) * np.sin(np.degrees(angles + math.radians(p.theta)))
+            angles = np.linspace(0, 2*math.pi, num=361)
+            dxs = np.array(msg.ranges) * np.cos(angles + p.theta)#np.degrees(angles + math.radians(p.theta)))
+            dys = np.array(msg.ranges) * np.sin(angles + p.theta)#np.degrees(angles + math.radians(p.theta)))
             print(p.theta)
 
             # Initialize total distance to 0
