@@ -10,6 +10,8 @@ from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, PoseArray,
 from robot_localizer.msg import Particle, ParticleArray
 from nav_msgs.srv import GetMap
 from copy import deepcopy
+from robot_localizer.cfg import ParticleFilterConfig
+from dynamic_reconfigure.server import Server
 
 import tf
 from tf import TransformListener
@@ -88,6 +90,7 @@ class ParticleFilter:
         self.odom_frame = "odom"        # the name of the odometry coordinate frame
         self.scan_topic = "scan"        # the topic where we will get laser scans from
 
+        # Initialize Parameters ---------------------------------------------------------------
         self.n_particles = 300                # the number of particles to use
         self.initial_uncertainty_xy = 1       # Amplitute factor of initial x and y uncertainty
         self.initial_uncertainty_theta = 0.5  # Amplitude factor of initial theta uncertainty
@@ -95,17 +98,18 @@ class ParticleFilter:
         self.n_particles_average = 20          # Number of particles to average for pose update
         self.linear_var_thresh = 0.05           # Maximum confidence along x/y (meters)
         self.angular_var_thresh = 0.2          # Maximum confidence along theta (radians)
-        # self.resample_noise_xy = 0.1          # Amplitude factor of resample x and y noise
-        # self.resample_noise_theta = 0.1       # Amplitude factor of resample theta noise
-
+        self.min_valid_pts = 10                # Minimum amont of valid points needed for a particle
         self.d_thresh = 0.2             # the amount of linear movement before performing an update
         self.a_thresh = math.pi/6       # the amount of angular movement before performing an update
-
         self.laser_max_distance = 2.0   # maximum penalty to assess in the likelihood field model
 
-        # TODO: define additional constants if needed
-
-        # Setup pubs and subs
+        # Start Dynamic Reconfigure Server -----------------------------------------
+        dyn_server = rospy.get_param('/use_dynamic_reconfigure', False)
+        if dyn_server:
+            print("here!!")
+            srv = Server(ParticleFilterConfig, self.param_callback)
+            
+        # Setup pubs and subs -----------------------------------------------------------------
 
         # pose_listener responds to selection of a new approximate robot location (for instance using rviz)
         rospy.Subscriber("initialpose", PoseWithCovarianceStamped, self.update_initial_pose)
@@ -135,6 +139,20 @@ class ParticleFilter:
         self.occupancy_field = OccupancyField()
         self.transform_helper = TFHelper()
         self.initialized = True
+
+    def param_callback(self, config, level):
+        self.n_particles = config.n_particles
+        self.initial_uncertainty_xy = config.initial_uncertainty_xy
+        self.initial_uncertainty_theta = config.initial_uncertainty_theta
+        self.variance_scale = config.variance_scale
+        self.n_particles_average = config.n_particles_average
+        self.linear_var_thresh = config.linear_var_thresh
+        self.angular_var_thresh = config.angular_var_thresh
+        self.min_valid_pts = config.min_valid_pts
+        self.d_thresh = config.d_thresh
+        self.a_thresh = config.a_thresh
+        self.laser_max_distance = config.laser_max_distance
+        return config
 
     def update_robot_pose(self, timestamp):
         """ Update the estimate of the robot's pose given the updated particles.
@@ -281,8 +299,7 @@ class ParticleFilter:
 
             # If there aren't enough valid points for the particle, assume that it's
             # not good
-            # TODO: Add a ROS param threshold for this
-            if valid_pts < 10:
+            if valid_pts < self.min_valid_pts:
                 p.w = 0
             else:
                 # Update particle weight based on inverse of average squared difference

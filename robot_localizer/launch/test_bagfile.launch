@@ -6,6 +6,7 @@
   <arg name="map_name"/>
   <arg name="load_camera" default="false"/>
   <arg name="use_gpu_laser" default="true"/>
+  <arg name="use_dynamic_reconfigure" default="true"/>
 
   <node name="map_server" pkg="map_server" type="map_server" args="$(find robot_localizer)/maps/$(arg map_name).yaml"/>
   <node name="bag_player" pkg="rosbag" type="play" args="$(find robot_localizer)/bags/$(arg map_name).bag --clock --pause --start=15" output="screen"/>
@@ -30,5 +31,11 @@
   </node>
   <node name="visualize_weights" pkg="robot_localizer"
     type="visualize_weights.py" output="screen"/>
+</group>
+
+<group if="$(arg use_dynamic_reconfigure)">
+  <rosparam param="use_dynamic_reconfigure" subst_value="True">$(arg use_dynamic_reconfigure)</rosparam>
+  <node name = "rqt_dashboard" pkg = "rqt_gui" type = "rqt_gui"
+    args = "--perspective-file $(find robot_localizer)/rqt/pf.perspective"/>
 </group>
 </launch>
