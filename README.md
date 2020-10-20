@@ -81,10 +81,13 @@ In our early versions, the particles in our cloud started with a random orientat
 Debugging the `update_particles_with_odom` function (computed weights based on scan data) was a challenge - we originally didn’t visualize it, and just assumed it was working because the particle array looked correct. For example, this is what our weights looked like when our lidar data wasn’t being projected onto the map frame properly
 
 ![correct-looking weights with incorrectly transformed lidar data](robot_localizer/img/buggy_weights.gif)
+
 ![correct-looking weights with incorrectly transformed lidar data](robot_localizer/img/buggy_weights2.gif)
 
 However, after visualizing it we found that we mistakenly assumed something was in degrees when it was in radians, so the lidar data wasn’t being used properly. 
+
 ![lidar scan with incorrect angles](robot_localizer/img/incorrect_lidar.png)
+
 After fixing the lidar projection function, our visualization made it evident that we did in fact fix the issue
 
 ![lidar scan with correct angles](robot_localizer/img/correct_lidar.png)
@@ -111,8 +114,11 @@ The first technical lesson we learned was that up front work on visualization sa
 On the non-technical front, collaborating on this project as a three-person team was challenging at times, because we needed to find ways to parallelize the work and avoid merge conflicts within the codebase. Creating an implementation plan at the beginning of the project was helpful, because it required us to clearly define what needed to be done. At the beginning of the project, we identified what each person was planning to contribute and defined the necessary inputs and outputs of each part.  Our final integration went pretty smoothly, but we did run into one case where a function needed to be implemented before another - initializing the particle cloud was necessary before we could compute the particle weights, and computing the particle weights was necessary for testing the particle resampling function (without proper weights, since all of the weights were the same, we couldn’t test if the resampling function properly chose poses based on weights). Because of the linear nature of the project’s dependencies, we should have considered the order in which functions would need to be completed and the times when team members would be working when we delegated tasks.
 
 ## Testing Additional Maps
+
 ![test results from bag 2](robot_localizer/img/map2.gif)
+
 ![test results from bag 3](robot_localizer/img/map3.gif)
+
 ![test results from bag 4](robot_localizer/img/map4.gif)
 
 
