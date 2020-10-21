@@ -105,7 +105,8 @@ Below, we have listed the possible improvements that we would have explored in t
 + Creating 2d graphs of error from ground truth prediction over time: would help us visualize the accuracy of our particle filter, and compare performance across multiple maps and iterations.
 + Implement the ray tracing function
 + Full range evenly distributed particle cloud when initialized
-+  Use mode instead of mean to improve ‘best guess’ functionality (in update_robot_pose)
++ Use mode instead of mean to improve ‘best guess’ functionality (in update_robot_pose)
++ Test using a custom map with a more tricky environment
 #### Lessons Learned
 Beyond our learning about particle filters throughout this project, we learned some more widely applicable skills and lessons to keep in mind for future technical projects and asynchronous collaboration. 
 
